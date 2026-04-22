@@ -24,6 +24,7 @@ app = FastAPI(
     description="API for Pokemon analytics",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url="/api/docs"
 )
 
 # CORS
