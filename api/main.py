@@ -2,20 +2,53 @@ import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from database import Base, engine
+from sqlalchemy import func
+from database import Base, engine, SessionLocal
+from models import Pokemon
 from routers import pokemon, analytics, compare, types
 from seed import seed_all
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Comma-separated list of allowed origins. Defaults to common local dev hosts.
+# Using a wildcard together with credentials is invalid per the CORS spec, so we
+# require explicit origins instead.
+ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost,http://localhost:3000,http://localhost:8000",
+    ).split(",")
+    if o.strip()
+]
+
+# Optional shared secret protecting the admin seed endpoint. When unset, the
+# endpoint is disabled to avoid leaving an unauthenticated reseed trigger open.
+SEED_TOKEN = os.getenv("SEED_TOKEN")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created")
+
+    # Optional: seed automatically on first boot when the DB is empty. The
+    # database is no longer baked into the image, so this keeps `docker compose
+    # up` self-contained without committing a binary DB to the repo.
+    if os.getenv("AUTO_SEED", "0") == "1":
+        db = SessionLocal()
+        try:
+            is_empty = db.query(func.count(Pokemon.id)).scalar() == 0
+        finally:
+            db.close()
+        if is_empty:
+            max_pokemon = int(os.getenv("AUTO_SEED_MAX", "151"))
+            logger.info("Empty database detected, auto-seeding %s pokemon...", max_pokemon)
+            asyncio.create_task(seed_all(max_pokemon))
+
     yield
 
 
@@ -30,7 +63,7 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -45,9 +78,15 @@ app.include_router(types.router)
 
 @app.post("/api/admin/seed")
 async def seed_database(
-    max_pokemon: int = 151,
-    background_tasks: BackgroundTasks = BackgroundTasks(),
+    background_tasks: BackgroundTasks,
+    max_pokemon: int = Query(151, ge=1, le=1025),
+    x_seed_token: str | None = Header(default=None),
 ):
+    if not SEED_TOKEN:
+        raise HTTPException(status_code=403, detail="Seeding is disabled")
+    if x_seed_token != SEED_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid seed token")
+
     background_tasks.add_task(asyncio.run, seed_all(max_pokemon))
     return {
         "message": f"Seeding started for {max_pokemon} pokemon",

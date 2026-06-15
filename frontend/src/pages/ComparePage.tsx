@@ -10,6 +10,10 @@ import { fetchPokemonList, comparePokemon } from '../api/pokemonApi';
 import type { PokemonListItem, CompareResponse, PokemonType } from '../types/pokemon';
 import TypeBadge from '../components/shared/TypeBadge';
 import { colors, typography, spacing, radius, shadows, transitions, CHART_COLORS } from '../styles/tokens';
+import {
+  card, searchInputStyle, dropdownPanel, dropdownRow,
+  pageTitle, pageSubtitle, errorBanner,
+} from '../styles/ui';
 
 const CLR = CHART_COLORS;
 
@@ -20,19 +24,28 @@ const ComparePage: React.FC = () => {
   const [selPoke, setSelPoke] = useState<PokemonListItem[]>([]);
   const [result, setResult] = useState<CompareResponse | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (query.length < 1) { setHints([]); return; }
     const t = setTimeout(async () => {
-      const d = await fetchPokemonList({ name: query, limit: 10, offset: 0 });
-      setHints(d.items.filter(p => !selIds.includes(p.id)));
+      try {
+        const d = await fetchPokemonList({ name: query, limit: 10, offset: 0 });
+        setHints(d.items.filter(p => !selIds.includes(p.id)));
+      } catch (e) { console.error(e); }
     }, 300);
     return () => clearTimeout(t);
   }, [query, selIds]);
 
   const add = (p: PokemonListItem) => { if (selIds.length >= 6) return; setSelIds(prev => [...prev, p.id]); setSelPoke(prev => [...prev, p]); setQuery(''); setHints([]); };
   const remove = (id: number) => { setSelIds(prev => prev.filter(x => x !== id)); setSelPoke(prev => prev.filter(x => x.id !== id)); setResult(null); };
-  const doCompare = async () => { if (selIds.length < 2) return; setBusy(true); try { setResult(await comparePokemon(selIds)); } catch (e) { console.error(e); } setBusy(false); };
+  const doCompare = async () => {
+    if (selIds.length < 2) return;
+    setBusy(true); setError(null);
+    try { setResult(await comparePokemon(selIds)); }
+    catch (e) { console.error(e); setError('Comparison failed. Please try again.'); }
+    setBusy(false);
+  };
 
   const rows = () => {
     if (!result) return [];
@@ -55,32 +68,23 @@ const ComparePage: React.FC = () => {
 
   const radar = result ? ['HP','ATK','DEF','SpA','SpD','SPD'].map((l, i) => { const k = ['hp','attack','defense','sp_attack','sp_defense','speed'] as const; const r: any = { stat: l }; result.pokemon.forEach(p => { r[p.name] = (p as any)[k[i]]; }); return r; }) : [];
 
-  const dropdownStyle: React.CSSProperties = {
-    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
-    background: colors.white, border: `1px solid ${colors.gray200}`, borderRadius: radius.lg,
-    boxShadow: shadows.lg, zIndex: 20, maxHeight: 320, overflowY: 'auto',
-  };
-
-  const dropdownItem: React.CSSProperties = {
-    display: 'flex', alignItems: 'center', padding: `${spacing.sm}px ${spacing.md}px`,
-    cursor: 'pointer', borderBottom: `1px solid ${colors.gray100}`, transition: transitions.fast,
-  };
-
   return (
     <div>
       <div style={{ marginBottom: spacing.xl }}>
-        <h1 style={{ fontSize: typography.fontSize['3xl'], fontWeight: typography.fontWeight.extrabold, color: colors.gray900, letterSpacing: '-0.03em', marginBottom: 4 }}>Compare Pokemon</h1>
-        <p style={{ fontSize: typography.fontSize.md, color: colors.gray500 }}>Select 2 to 6 Pokemon for a detailed stat comparison</p>
+        <h1 style={pageTitle}>Compare Pokemon</h1>
+        <p style={pageSubtitle}>Select 2 to 6 Pokemon for a detailed stat comparison</p>
       </div>
+
+      {error && <div style={errorBanner}>{error}</div>}
 
       {/* Search */}
       <div style={{ position: 'relative', maxWidth: 420, marginBottom: spacing.lg }}>
         <input type="text" placeholder="Start typing the Pokemon's name..." value={query} onChange={e => setQuery(e.target.value)}
-          style={{ width: '100%', padding: '10px 16px', borderRadius: radius.lg, border: `2px solid ${colors.gray200}`, fontSize: typography.fontSize.md, fontFamily: typography.fontFamily, color: colors.gray800, outline: 'none', transition: transitions.fast, boxSizing: 'border-box' }} />
+          style={searchInputStyle} />
         {hints.length > 0 && (
-          <div style={dropdownStyle}>
+          <div style={dropdownPanel}>
             {hints.map(p => (
-              <div key={p.id} onClick={() => add(p)} style={dropdownItem}
+              <div key={p.id} onClick={() => add(p)} style={dropdownRow}
                 onMouseEnter={e => (e.currentTarget.style.background = colors.gray50)} onMouseLeave={e => (e.currentTarget.style.background = colors.white)}>
                 {p.sprite_url && <img src={p.sprite_url} alt="" style={{ width: 32, height: 32, marginRight: spacing.sm, borderRadius: 4 }} />}
                 <span style={{ textTransform: 'capitalize', fontWeight: typography.fontWeight.medium, color: colors.gray800 }}>#{p.id} {p.name}</span>
@@ -111,17 +115,17 @@ const ComparePage: React.FC = () => {
             cursor: 'pointer', fontFamily: typography.fontFamily, transition: transitions.fast,
             boxShadow: shadows.glow(colors.primary500),
           }}>
-            {busy ? 'Сomparison...' : '⚡ Compare'}
+            {busy ? 'Comparing...' : '⚡ Compare'}
           </button>
         )}
       </div>
 
       {result && (
         <>
-          <div style={{ background: colors.white, borderRadius: radius.xl, border: `1px solid ${colors.gray200}`, boxShadow: shadows.md, overflow: 'hidden', height: 340, marginBottom: spacing.xl }}>
+          <div style={card({ overflow: 'hidden', height: 340, marginBottom: spacing.xl })}>
             <AgGridReact theme={gridTheme} rowData={rows()} columnDefs={gridCols} defaultColDef={{ resizable: true }} animateRows />
           </div>
-          <div style={{ maxWidth: 640, margin: '0 auto', background: colors.white, borderRadius: radius.xl, padding: spacing.xl, boxShadow: shadows.md, border: `1px solid ${colors.gray200}` }}>
+          <div style={card({ maxWidth: 640, margin: '0 auto', padding: spacing.xl })}>
             <h3 style={{ textAlign: 'center', fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.gray900, marginBottom: spacing.base }}>Feature Profiles</h3>
             <ResponsiveContainer width="100%" height={380}>
               <RadarChart data={radar}>

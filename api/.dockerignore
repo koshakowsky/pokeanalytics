@@ -3,3 +3,8 @@ __pycache__/
 venv/
 .venv/
 .git/
+
+# Never bake the local SQLite database into the image; it lives on a volume.
+*.db
+*.sqlite
+*.sqlite3

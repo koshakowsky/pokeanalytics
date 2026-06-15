@@ -9,20 +9,24 @@ import {
 import { fetchCategories, fetchTypeDistribution, fetchGenerationStats } from '../api/pokemonApi';
 import type { CategoryStat, TypeDistribution, GenerationStats } from '../types/pokemon';
 import { colors, typography, spacing, radius, shadows, transitions, TYPE_COLORS, CHART_COLORS } from '../styles/tokens';
+import { card, tooltipStyle, pageTitle, pageSubtitle, errorBanner } from '../styles/ui';
 
-const cardStyle: React.CSSProperties = {
-  background: colors.white, borderRadius: radius.xl, padding: spacing.lg,
-  boxShadow: shadows.md, border: `1px solid ${colors.gray200}`,
-};
+const cardStyle = card({ padding: spacing.lg });
 
 const AnalyticsPage: React.FC = () => {
   const [groupBy, setGroupBy] = useState('type');
   const [categories, setCategories] = useState<CategoryStat[]>([]);
   const [typeDist, setTypeDist] = useState<TypeDistribution[]>([]);
   const [genStats, setGenStats] = useState<GenerationStats[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { fetchCategories(groupBy).then(setCategories); }, [groupBy]);
-  useEffect(() => { fetchTypeDistribution().then(setTypeDist); fetchGenerationStats().then(setGenStats); }, []);
+  useEffect(() => {
+    fetchCategories(groupBy).then(setCategories).catch(() => setError('Failed to load analytics'));
+  }, [groupBy]);
+  useEffect(() => {
+    fetchTypeDistribution().then(setTypeDist).catch(() => setError('Failed to load analytics'));
+    fetchGenerationStats().then(setGenStats).catch(() => setError('Failed to load analytics'));
+  }, []);
 
   const colDefs: ColDef<CategoryStat>[] = [
     { headerName: 'Category', field: 'category', flex: 1, minWidth: 110, sortable: true,
@@ -49,26 +53,14 @@ const AnalyticsPage: React.FC = () => {
     { v: 'growth_rate', l: 'Growth rate', icon: '📈' },
   ];
 
-  const tooltipStyle = {
-    contentStyle: {
-      background: colors.gray900, border: 'none', borderRadius: radius.md,
-      fontSize: typography.fontSize.sm, color: colors.white, padding: '8px 12px',
-      boxShadow: shadows.lg,
-    },
-    itemStyle: { color: colors.gray200 },
-  };
-
   return (
     <div>
       <div style={{ marginBottom: spacing.xl }}>
-        <h1 style={{
-          fontSize: typography.fontSize['3xl'], fontWeight: typography.fontWeight.extrabold,
-          color: colors.gray900, letterSpacing: '-0.03em', marginBottom: 4,
-        }}>Category analysis</h1>
-        <p style={{ fontSize: typography.fontSize.md, color: colors.gray500 }}>
-          Explore Pokemon stats for various attributes
-        </p>
+        <h1 style={pageTitle}>Category analysis</h1>
+        <p style={pageSubtitle}>Explore Pokemon stats for various attributes</p>
       </div>
+
+      {error && <div style={errorBanner}>{error}</div>}
 
       {/* ── Group buttons ── */}
       <div style={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap', marginBottom: spacing.lg }}>
