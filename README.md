@@ -23,11 +23,16 @@ This is **not** a production application. It was built specifically as a testabl
 
 | Area | Technologies |
 |------|-------------|
-| API Testing | Java, REST Assured, TestNG |
-| UI Testing | Playwright |
+| API Testing | Python, pytest, httpx |
+| UI / E2E Testing | Playwright for Python |
 | Reporting | Allure |
-| Test Design | Boundary values, equivalence partitioning, pairwise |
-| CI/CD | Docker, Docker Compose |
+| Test Design | Equivalence partitioning, boundary values, decision tables, pairwise (allpairspy), error guessing |
+| CI/CD | Docker, Docker Compose, GitHub Actions |
+
+The test artifacts live in a companion project — **poketests**: a test-case
+catalog (~80 cases with design-technique traceability, P0–P3 priorities and
+deterministic oracles) and a pytest + httpx suite automating it, including
+`xfail`-documented known bugs used as test targets.
 
 ---
 
