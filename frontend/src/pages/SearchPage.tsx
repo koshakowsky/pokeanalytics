@@ -6,56 +6,63 @@ import { fetchPokemonSearch, fetchTypes, fetchStatRanges } from '../api/pokemonA
 import type { PokemonType, SearchFilters, PokemonListItem } from '../types/pokemon';
 import TypeBadge from '../components/shared/TypeBadge';
 import StatBar from '../components/shared/StatBar';
-import { colors, typography, spacing, radius, shadows, transitions } from '../styles/tokens';
+import { colors, typography, spacing, radius } from '../styles/tokens';
+import {
+  card, inputStyle as input, labelStyle as label,
+  pageTitle, pageSubtitle, errorBanner,
+} from '../styles/ui';
 
+type StatRange = { min: number; max: number; avg: number };
 
-const card = (extra?: React.CSSProperties): React.CSSProperties => ({
-  background: colors.white,
-  borderRadius: radius.xl,
-  border: `1px solid ${colors.gray200}`,
-  boxShadow: shadows.md,
-  ...extra,
-});
-
-const label: React.CSSProperties = {
-  display: 'block', fontSize: typography.fontSize.xs,
-  fontWeight: typography.fontWeight.semibold, color: colors.gray400,
-  marginBottom: 4, letterSpacing: '0.04em', textTransform: 'uppercase',
-};
-
-const input: React.CSSProperties = {
-  width: '100%', padding: '8px 12px', borderRadius: radius.sm,
-  border: `1px solid ${colors.gray200}`, fontSize: typography.fontSize.md,
-  fontFamily: typography.fontFamily, color: colors.gray800,
-  background: colors.white, transition: transitions.fast,
-  outline: 'none', boxSizing: 'border-box',
-};
+const PAGE_SIZE = 50;
 
 const SearchPage: React.FC = () => {
   const [types, setTypes] = useState<PokemonType[]>([]);
-  const [statRanges, setStatRanges] = useState<Record<string, any>>({});
+  const [statRanges, setStatRanges] = useState<Record<string, StatRange>>({});
   const [filters, setFilters] = useState<SearchFilters>({ sort_by: 'stat_total', sort_order: 'desc' });
   const [results, setResults] = useState<PokemonListItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<PokemonListItem | null>(null);
 
-  useEffect(() => { fetchTypes().then(setTypes); fetchStatRanges().then(setStatRanges); }, []);
+  useEffect(() => {
+    fetchTypes().then(setTypes).catch(() => setError('Failed to load types'));
+    fetchStatRanges().then(setStatRanges).catch(() => { /* sliders fall back to defaults */ });
+  }, []);
 
-  const doSearch = useCallback(async () => {
+  const doSearch = useCallback(async (off: number) => {
     setLoading(true);
+    setError(null);
     try {
       const clean: Record<string, any> = {};
       Object.entries(filters).forEach(([k, v]) => {
         if (v !== undefined && v !== null && v !== '' && v !== 0) clean[k] = v;
       });
-      const data = await fetchPokemonSearch({ ...clean, limit: 100, offset: 0 });
-      setResults(data.items); setTotal(data.total);
-    } catch (e) { console.error(e); }
+      const data = await fetchPokemonSearch({ ...clean, limit: PAGE_SIZE, offset: off });
+      setResults(data.items);
+      setTotal(data.total);
+      setHasMore(data.has_more);
+    } catch (e) {
+      console.error(e);
+      setError('Failed to load Pokemon. Is the API running?');
+      setResults([]);
+      setTotal(0);
+      setHasMore(false);
+    }
     setLoading(false);
   }, [filters]);
 
-  useEffect(() => { const t = setTimeout(doSearch, 350); return () => clearTimeout(t); }, [doSearch]);
+  // Reset to the first page whenever the filters change.
+  useEffect(() => { setOffset(0); }, [filters]);
+
+  // Debounced search on filter / page changes.
+  useEffect(() => {
+    const t = setTimeout(() => doSearch(offset), 350);
+    return () => clearTimeout(t);
+  }, [doSearch, offset]);
 
   const colDefs: ColDef<PokemonListItem>[] = [
     {
@@ -91,19 +98,15 @@ const SearchPage: React.FC = () => {
     },
   ];
 
+  const rangeFrom = offset + 1;
+  const rangeTo = offset + results.length;
+
   return (
     <div>
       {/* ── Page header ── */}
       <div style={{ marginBottom: spacing.xl }}>
-        <h1 style={{
-          fontSize: typography.fontSize['3xl'], fontWeight: typography.fontWeight.extrabold,
-          color: colors.gray900, letterSpacing: '-0.03em', marginBottom: 4,
-        }}>
-          Pokemon select
-        </h1>
-        <p style={{ fontSize: typography.fontSize.md, color: colors.gray500 }}>
-          Filter and find Pokemon by stats, types, and generations
-        </p>
+        <h1 style={pageTitle}>Pokemon select</h1>
+        <p style={pageSubtitle}>Filter and find Pokemon by stats, types, and generations</p>
       </div>
 
       {/* ── Filters ── */}
@@ -136,7 +139,7 @@ const SearchPage: React.FC = () => {
             {[1,2,3,4,5,6,7,8,9].map(g => <option key={g} value={g}>Generation {g}</option>)}
           </select>
         </div>
-                <div>
+        <div>
           <span style={label}>Group</span>
           <select
             value={
@@ -179,6 +182,8 @@ const SearchPage: React.FC = () => {
         ))}
       </div>
 
+      {error && <div style={errorBanner}>{error}</div>}
+
       {/* ── Results bar ── */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -196,7 +201,7 @@ const SearchPage: React.FC = () => {
             padding: `${spacing.sm}px ${spacing.base}px`, borderRadius: radius.md,
             border: `1px solid ${colors.gray200}`, background: colors.white,
             fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium,
-            color: colors.gray600, cursor: 'pointer', transition: transitions.fast,
+            color: colors.gray600, cursor: 'pointer',
             fontFamily: typography.fontFamily,
           }}>
           Reset filters
@@ -215,6 +220,36 @@ const SearchPage: React.FC = () => {
           loading={loading}
         />
       </div>
+
+      {/* ── Pagination ── */}
+      {total > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+          gap: spacing.md, marginTop: spacing.md,
+        }}>
+          <span style={{ fontSize: typography.fontSize.sm, color: colors.gray500, fontVariantNumeric: 'tabular-nums' }}>
+            {rangeFrom}–{rangeTo} of {total}
+          </span>
+          <button disabled={offset === 0 || loading}
+            onClick={() => setOffset(o => Math.max(0, o - PAGE_SIZE))}
+            style={{
+              padding: `${spacing.xs}px ${spacing.md}px`, borderRadius: radius.md,
+              border: `1px solid ${colors.gray200}`, background: colors.white,
+              color: offset === 0 ? colors.gray300 : colors.gray700,
+              cursor: offset === 0 ? 'default' : 'pointer',
+              fontSize: typography.fontSize.sm, fontFamily: typography.fontFamily,
+            }}>‹ Prev</button>
+          <button disabled={!hasMore || loading}
+            onClick={() => setOffset(o => o + PAGE_SIZE)}
+            style={{
+              padding: `${spacing.xs}px ${spacing.md}px`, borderRadius: radius.md,
+              border: `1px solid ${colors.gray200}`, background: colors.white,
+              color: !hasMore ? colors.gray300 : colors.gray700,
+              cursor: !hasMore ? 'default' : 'pointer',
+              fontSize: typography.fontSize.sm, fontFamily: typography.fontFamily,
+            }}>Next ›</button>
+        </div>
+      )}
 
       {/* ── Selected card ── */}
       {selected && (

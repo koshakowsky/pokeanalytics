@@ -10,7 +10,11 @@ import { fetchPokemonList, fetchPokemonDetail, fetchSimilarPokemon } from '../ap
 import type { PokemonListItem, PokemonDetail, SimilarPokemon, PokemonType } from '../types/pokemon';
 import TypeBadge from '../components/shared/TypeBadge';
 import StatBar from '../components/shared/StatBar';
-import { colors, typography, spacing, radius, shadows, transitions, CHART_COLORS } from '../styles/tokens';
+import { colors, typography, spacing, radius, transitions, CHART_COLORS } from '../styles/tokens';
+import {
+  card, searchInputStyle, dropdownPanel, dropdownRow,
+  pageTitle, pageSubtitle, errorBanner,
+} from '../styles/ui';
 
 const SimilarPage: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -18,16 +22,23 @@ const SimilarPage: React.FC = () => {
   const [target, setTarget] = useState<PokemonDetail | null>(null);
   const [similar, setSimilar] = useState<SimilarPokemon[]>([]);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (query.length < 1) { setHints([]); return; }
-    const t = setTimeout(async () => { const d = await fetchPokemonList({ name: query, limit: 8, offset: 0 }); setHints(d.items); }, 300);
+    const t = setTimeout(async () => {
+      try { const d = await fetchPokemonList({ name: query, limit: 8, offset: 0 }); setHints(d.items); }
+      catch (e) { console.error(e); }
+    }, 300);
     return () => clearTimeout(t);
   }, [query]);
 
   const pick = async (p: PokemonListItem) => {
-    setQuery(''); setHints([]); setBusy(true);
-    try { const [det, sim] = await Promise.all([fetchPokemonDetail(p.id), fetchSimilarPokemon(p.id, 12)]); setTarget(det); setSimilar(sim); } catch (e) { console.error(e); }
+    setQuery(''); setHints([]); setBusy(true); setError(null);
+    try {
+      const [det, sim] = await Promise.all([fetchPokemonDetail(p.id), fetchSimilarPokemon(p.id, 12)]);
+      setTarget(det); setSimilar(sim);
+    } catch (e) { console.error(e); setError('Failed to load similar Pokemon.'); }
     setBusy(false);
   };
 
@@ -58,19 +69,21 @@ const SimilarPage: React.FC = () => {
   return (
     <div>
       <div style={{ marginBottom: spacing.xl }}>
-        <h1 style={{ fontSize: typography.fontSize['3xl'], fontWeight: typography.fontWeight.extrabold, color: colors.gray900, letterSpacing: '-0.03em', marginBottom: 4 }}>Find a similar Pokemon</h1>
-        <p style={{ fontSize: typography.fontSize.md, color: colors.gray500 }}>Find Pokemon with similar stats, types, and profiles</p>
+        <h1 style={pageTitle}>Find a similar Pokemon</h1>
+        <p style={pageSubtitle}>Find Pokemon with similar stats, types, and profiles</p>
       </div>
+
+      {error && <div style={errorBanner}>{error}</div>}
 
       {/* Search */}
       <div style={{ position: 'relative', maxWidth: 420, marginBottom: spacing.xl }}>
         <input type="text" placeholder="Start typing the Pokemon's name..." value={query} onChange={e => setQuery(e.target.value)}
-          style={{ width: '100%', padding: '10px 16px', borderRadius: radius.lg, border: `2px solid ${colors.gray200}`, fontSize: typography.fontSize.md, fontFamily: typography.fontFamily, color: colors.gray800, outline: 'none', transition: transitions.fast, boxSizing: 'border-box' }} />
+          style={searchInputStyle} />
         {hints.length > 0 && (
-          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: colors.white, border: `1px solid ${colors.gray200}`, borderRadius: radius.lg, boxShadow: shadows.lg, zIndex: 20 }}>
+          <div style={dropdownPanel}>
             {hints.map(p => (
               <div key={p.id} onClick={() => pick(p)}
-                style={{ display: 'flex', alignItems: 'center', padding: `${spacing.sm}px ${spacing.md}px`, cursor: 'pointer', borderBottom: `1px solid ${colors.gray100}`, transition: transitions.fast }}
+                style={dropdownRow}
                 onMouseEnter={e => (e.currentTarget.style.background = colors.gray50)} onMouseLeave={e => (e.currentTarget.style.background = colors.white)}>
                 {p.sprite_url && <img src={p.sprite_url} alt="" style={{ width: 32, height: 32, marginRight: spacing.sm, borderRadius: 4 }} />}
                 <span style={{ textTransform: 'capitalize', fontWeight: typography.fontWeight.medium, color: colors.gray800 }}>#{p.id} {p.name}</span>
@@ -84,12 +97,10 @@ const SimilarPage: React.FC = () => {
 
       {/* Target card */}
       {target && (
-        <div style={{
+        <div style={card({
           display: 'flex', gap: spacing.xl, padding: spacing.xl,
-          background: colors.white, borderRadius: radius.xl,
-          border: `1px solid ${colors.gray200}`, boxShadow: shadows.md,
           marginBottom: spacing.xl, borderLeft: `4px solid ${colors.primary500}`,
-        }}>
+        })}>
           <div style={{ textAlign: 'center' }}>
             {target.sprite_official && (
               <div style={{ width: 140, height: 140, borderRadius: radius.xl, background: colors.gray50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -103,7 +114,7 @@ const SimilarPage: React.FC = () => {
             <div style={{ marginTop: spacing.xs }}>{target.types.map(t => <TypeBadge key={t.id} typeName={t.name} />)}</div>
           </div>
           <div style={{ flex: 1, maxWidth: 360 }}>
-            <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.gray400, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: spacing.sm }}>Базовые характеристики</h4>
+            <h4 style={{ fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.semibold, color: colors.gray400, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: spacing.sm }}>Base stats</h4>
             {(['hp','attack','defense','sp_attack','sp_defense','speed'] as const).map(s => <StatBar key={s} label={s} value={target[s]} />)}
             <div style={{ marginTop: spacing.md, fontSize: typography.fontSize.sm, color: colors.gray500, display: 'flex', gap: spacing.base, flexWrap: 'wrap' }}>
               <span>📏 {target.height_m}m</span>
@@ -123,12 +134,12 @@ const SimilarPage: React.FC = () => {
             <h2 style={{ fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colors.gray900 }}>Similar Pokemon</h2>
             <span style={{ fontSize: typography.fontSize.md, color: colors.gray400 }}>({similar.length})</span>
           </div>
-          <div style={{ background: colors.white, borderRadius: radius.xl, border: `1px solid ${colors.gray200}`, boxShadow: shadows.md, overflow: 'hidden', height: 480, marginBottom: spacing.xl }}>
+          <div style={card({ overflow: 'hidden', height: 480, marginBottom: spacing.xl })}>
             <AgGridReact<SimilarPokemon> theme={gridTheme} rowData={similar} columnDefs={colDefs} defaultColDef={{ resizable: true }} rowHeight={44} animateRows />
           </div>
 
           {radar.length > 0 && target && (
-            <div style={{ maxWidth: 640, margin: '0 auto', background: colors.white, borderRadius: radius.xl, padding: spacing.xl, boxShadow: shadows.md, border: `1px solid ${colors.gray200}` }}>
+            <div style={card({ maxWidth: 640, margin: '0 auto', padding: spacing.xl })}>
               <h3 style={{ textAlign: 'center', fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.gray900, marginBottom: spacing.base }}>
                 <span style={{ textTransform: 'capitalize' }}>{target.name}</span> vs Top-3 similar
               </h3>

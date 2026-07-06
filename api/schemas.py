@@ -1,35 +1,34 @@
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, ConfigDict, computed_field
 from typing import Optional
 
 
 # --- Base ---
 
 class TypeSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
-    
-    class Config:
-        from_attributes = True
 
 
 class AbilitySchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     short_effect: Optional[str] = None
-    
-    class Config:
-        from_attributes = True
 
 
 class EggGroupSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
-    
-    class Config:
-        from_attributes = True
 
 
 class MoveSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     power: Optional[int] = None
@@ -37,14 +36,13 @@ class MoveSchema(BaseModel):
     pp: Optional[int] = None
     damage_class: Optional[str] = None
     type: Optional[TypeSchema] = None
-    
-    class Config:
-        from_attributes = True
 
 
 # --- Pokemon ---
 
 class PokemonListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     sprite_url: Optional[str] = None
@@ -59,12 +57,11 @@ class PokemonListItem(BaseModel):
     sp_attack: int = 0
     sp_defense: int = 0
     speed: int = 0
-    
-    class Config:
-        from_attributes = True
 
 
 class PokemonDetail(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     height: Optional[int] = None
@@ -103,9 +100,6 @@ class PokemonDetail(BaseModel):
     @property
     def weight_kg(self) -> Optional[float]:
         return round(self.weight / 10, 1) if self.weight else None
-    
-    class Config:
-        from_attributes = True
 
 
 # --- Filters and queries ---
@@ -194,9 +188,8 @@ class CompareResponse(BaseModel):
 
 
 class TypeEffectivenessSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     attacking_type: str
     defending_type: str
     multiplier: float
-    
-    class Config:
-        from_attributes = True
