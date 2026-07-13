@@ -9,13 +9,11 @@ from database import Base, engine, SessionLocal
 from models import Pokemon
 from routers import pokemon, analytics, compare, types
 from seed import seed_all
+from seed_fixture import seed_from_fixture
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Comma-separated list of allowed origins. Defaults to common local dev hosts.
-# Using a wildcard together with credentials is invalid per the CORS spec, so we
-# require explicit origins instead.
 ALLOWED_ORIGINS = [
     o.strip()
     for o in os.getenv(
@@ -35,9 +33,6 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created")
 
-    # Optional: seed automatically on first boot when the DB is empty. The
-    # database is no longer baked into the image, so this keeps `docker compose
-    # up` self-contained without committing a binary DB to the repo.
     if os.getenv("AUTO_SEED", "0") == "1":
         db = SessionLocal()
         try:
@@ -46,8 +41,12 @@ async def lifespan(app: FastAPI):
             db.close()
         if is_empty:
             max_pokemon = int(os.getenv("AUTO_SEED_MAX", "151"))
-            logger.info("Empty database detected, auto-seeding %s pokemon...", max_pokemon)
-            asyncio.create_task(seed_all(max_pokemon))
+            if os.getenv("AUTO_SEED_SOURCE", "fixture") == "fixture":
+                count = seed_from_fixture(max_pokemon=max_pokemon)
+                logger.info("Auto-seeded %s pokemon from local fixture", count)
+            else:
+                logger.info("Empty database detected, auto-seeding %s pokemon from PokeAPI...", max_pokemon)
+                asyncio.create_task(seed_all(max_pokemon))
 
     yield
 
@@ -57,7 +56,8 @@ app = FastAPI(
     description="API for Pokemon analytics",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/api/docs"
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
 )
 
 # CORS
