@@ -13,8 +13,11 @@ services:
       # Set this to enable the protected /api/admin/seed endpoint.
       SEED_TOKEN: ${SEED_TOKEN:-}
       # Auto-seed the DB on first boot when empty (keeps the demo self-contained).
+      # Source "fixture" seeds synchronously from the bundled JSON (hermetic,
+      # no network); "pokeapi" keeps the legacy live-API background seeding.
       AUTO_SEED: ${AUTO_SEED:-1}
       AUTO_SEED_MAX: ${AUTO_SEED_MAX:-151}
+      AUTO_SEED_SOURCE: ${AUTO_SEED_SOURCE:-fixture}
     volumes:
       - api_data:/data
     healthcheck:
