@@ -4,12 +4,9 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func
-from database import Base, engine, SessionLocal
-from models import Pokemon
 from routers import pokemon, analytics, compare, types
 from seed import seed_all
-from seed_fixture import seed_from_fixture
+from bootstrap import INIT_DONE_ENV, initialize_database
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,24 +27,12 @@ SEED_TOKEN = os.getenv("SEED_TOKEN")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created")
-
-    if os.getenv("AUTO_SEED", "0") == "1":
-        db = SessionLocal()
-        try:
-            is_empty = db.query(func.count(Pokemon.id)).scalar() == 0
-        finally:
-            db.close()
-        if is_empty:
-            max_pokemon = int(os.getenv("AUTO_SEED_MAX", "151"))
-            if os.getenv("AUTO_SEED_SOURCE", "fixture") == "fixture":
-                count = seed_from_fixture(max_pokemon=max_pokemon)
-                logger.info("Auto-seeded %s pokemon from local fixture", count)
-            else:
-                logger.info("Empty database detected, auto-seeding %s pokemon from PokeAPI...", max_pokemon)
-                asyncio.create_task(seed_all(max_pokemon))
-
+    # Under gunicorn, on_starting() already ran initialize_database() once in
+    # the arbiter before forking (INIT_DONE_ENV set), so workers skip it and
+    # avoid racing on the SQLite file. Under a bare `uvicorn main:app` (single
+    # process) the flag is unset, so we initialize here.
+    if os.environ.get(INIT_DONE_ENV) != "1":
+        initialize_database()
     yield
 
 
