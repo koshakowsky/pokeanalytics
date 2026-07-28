@@ -1,13 +1,4 @@
 name: PR gate — API suite
-
-# Pre-merge gate. On every PR into main, run the poketests API suite against
-# THIS PR's SUT code. Because the workflow lives in the SUT repo, its job
-# status attaches to the PR automatically (same-repo GITHUB_TOKEN) — enable it
-# as a required status check in branch protection and the suite must pass
-# before merge. No PAT / cross-repo status API needed.
-#
-# `pull_request` checks out the merge ref by default (this PR merged into main),
-# so the gate tests what main will actually look like after merging.
 on:
   pull_request:
     branches: [main]
