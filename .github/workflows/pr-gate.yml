@@ -1,0 +1,61 @@
+name: PR gate — API suite
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  api-suite:
+    name: API suite (poketests@main)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout SUT (this PR, merged into main)
+        uses: actions/checkout@v7
+        with:
+          path: sut
+
+      - name: Checkout test suite (poketests@main)
+        uses: actions/checkout@v7
+        with:
+          repository: koshakowsky/poketests
+          ref: main
+          path: poketests
+
+      # Hermetic fixture seeding is synchronous at startup: --wait returning
+      # healthy already implies "dataset ready".
+      - name: Start SUT stack (hermetic fixture seed)
+        working-directory: sut
+        run: docker compose up -d --build --wait
+        env:
+          AUTO_SEED: "1"
+          AUTO_SEED_SOURCE: "fixture"
+
+      - name: Assert dataset is ready
+        run: |
+          total=$(curl -sf 'http://localhost/api/pokemon/?limit=1' | jq -r .total)
+          [ "$total" = "151" ] || { echo "expected 151 pokemon, got: $total"; exit 1; }
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        working-directory: poketests
+        run: pip install -r requirements.txt
+
+      - name: Run suite (default config — seed disabled)
+        working-directory: poketests
+        run: pytest --alluredir=allure-results
+        env:
+          POKETESTS_BASE_URL: http://localhost/api
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: allure-results
+          path: poketests/allure-results
+
+      - name: SUT logs on failure
+        if: failure()
+        working-directory: sut
+        run: docker compose logs --tail=200
