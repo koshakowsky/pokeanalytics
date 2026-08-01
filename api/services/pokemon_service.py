@@ -18,7 +18,13 @@ def get_pokemon_list(db: Session, params: PokemonSearchParams) -> PaginatedRespo
 
     # --- Filters ---
     if params.name:
-        query = query.filter(Pokemon.name.ilike(f"%{params.name}%"))
+        # Escape LIKE wildcards so the filter matches the input literally
+        # (BUG-001): otherwise `%` / `_` in user input act as wildcards and the
+        # filter returns everything instead of a substring match.
+        escaped = (
+            params.name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+        query = query.filter(Pokemon.name.ilike(f"%{escaped}%", escape="\\"))
 
     if params.types:
         for type_name in params.types:
@@ -63,7 +69,13 @@ def get_pokemon_list(db: Session, params: PokemonSearchParams) -> PaginatedRespo
     sort_by = params.sort_by if params.sort_by in SORTABLE_COLUMNS else "id"
     sort_column = getattr(Pokemon, sort_by)
     order_func = desc if params.sort_order == "desc" else asc
-    query = query.order_by(order_func(sort_column))
+    # Secondary sort by the unique id makes pagination deterministic when the
+    # primary sort key has ties (BUG-002): without it, the order within a tie
+    # group is undefined and pages can duplicate/drop rows.
+    order_clauses = [order_func(sort_column)]
+    if sort_by != "id":
+        order_clauses.append(asc(Pokemon.id))
+    query = query.order_by(*order_clauses)
 
     # --- Pagination ---
     items = query.offset(params.offset).limit(params.limit).all()
