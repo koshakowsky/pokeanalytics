@@ -65,7 +65,7 @@ const AnalyticsPage: React.FC = () => {
       {/* ── Group buttons ── */}
       <div style={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap', marginBottom: spacing.lg }}>
         {groups.map(g => (
-          <button key={g.v} onClick={() => setGroupBy(g.v)} style={{
+          <button key={g.v} data-testid={`group-${g.v}`} onClick={() => setGroupBy(g.v)} style={{
             padding: `${spacing.sm}px ${spacing.base}px`,
             borderRadius: radius.lg, cursor: 'pointer',
             fontSize: typography.fontSize.sm, fontWeight: typography.fontWeight.medium,
@@ -82,7 +82,7 @@ const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* ── Table ── */}
-      <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', height: 380, marginBottom: spacing.xl }}>
+      <div data-testid="analytics-grid" style={{ ...cardStyle, padding: 0, overflow: 'hidden', height: 380, marginBottom: spacing.xl }}>
         <AgGridReact<CategoryStat>
           theme={gridTheme}
           rowData={categories} columnDefs={colDefs}
@@ -91,7 +91,7 @@ const AnalyticsPage: React.FC = () => {
 
       {/* ── Charts ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: spacing.xl }}>
-        <div style={cardStyle}>
+        <div data-testid="chart-avg-total" style={cardStyle}>
           <h3 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.gray900, marginBottom: spacing.base }}>
             Average Total Stats
           </h3>
@@ -107,7 +107,7 @@ const AnalyticsPage: React.FC = () => {
           </ResponsiveContainer>
         </div>
 
-        <div style={cardStyle}>
+        <div data-testid="chart-by-type" style={cardStyle}>
           <h3 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.gray900, marginBottom: spacing.base }}>
             By type
           </h3>
@@ -126,7 +126,7 @@ const AnalyticsPage: React.FC = () => {
           </ResponsiveContainer>
         </div>
 
-        <div style={{ ...cardStyle, gridColumn: '1 / -1' }}>
+        <div data-testid="chart-by-generation" style={{ ...cardStyle, gridColumn: '1 / -1' }}>
           <h3 style={{ fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.gray900, marginBottom: spacing.base }}>
             Pokemons by generation
           </h3>

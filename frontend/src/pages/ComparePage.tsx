@@ -80,11 +80,11 @@ const ComparePage: React.FC = () => {
       {/* Search */}
       <div style={{ position: 'relative', maxWidth: 420, marginBottom: spacing.lg }}>
         <input type="text" placeholder="Start typing the Pokemon's name..." value={query} onChange={e => setQuery(e.target.value)}
-          style={searchInputStyle} />
+          data-testid="compare-search" style={searchInputStyle} />
         {hints.length > 0 && (
           <div style={dropdownPanel}>
             {hints.map(p => (
-              <div key={p.id} onClick={() => add(p)} style={dropdownRow}
+              <div key={p.id} data-testid="compare-suggestion" onClick={() => add(p)} style={dropdownRow}
                 onMouseEnter={e => (e.currentTarget.style.background = colors.gray50)} onMouseLeave={e => (e.currentTarget.style.background = colors.white)}>
                 {p.sprite_url && <img src={p.sprite_url} alt="" style={{ width: 32, height: 32, marginRight: spacing.sm, borderRadius: 4 }} />}
                 <span style={{ textTransform: 'capitalize', fontWeight: typography.fontWeight.medium, color: colors.gray800 }}>#{p.id} {p.name}</span>
@@ -98,17 +98,17 @@ const ComparePage: React.FC = () => {
       {/* Chips */}
       <div style={{ display: 'flex', gap: spacing.sm, flexWrap: 'wrap', marginBottom: spacing.lg }}>
         {selPoke.map((p, i) => (
-          <div key={p.id} style={{
+          <div key={p.id} data-testid="compare-chip" style={{
             display: 'flex', alignItems: 'center', padding: `${spacing.xs}px ${spacing.md}px`, borderRadius: radius.lg,
             border: `2px solid ${CLR[i]}`, background: `${CLR[i]}08`, transition: transitions.fast,
           }}>
             {p.sprite_url && <img src={p.sprite_url} alt="" style={{ width: 32, height: 32, borderRadius: 4 }} />}
             <span style={{ textTransform: 'capitalize', fontWeight: typography.fontWeight.semibold, margin: `0 ${spacing.sm}px`, color: colors.gray800, fontSize: typography.fontSize.md }}>{p.name}</span>
-            <button onClick={() => remove(p.id)} style={{ background: 'none', border: 'none', color: colors.error, fontSize: 16, cursor: 'pointer', fontWeight: typography.fontWeight.bold, lineHeight: 1, padding: 2 }}>×</button>
+            <button data-testid="compare-chip-remove" onClick={() => remove(p.id)} style={{ background: 'none', border: 'none', color: colors.error, fontSize: 16, cursor: 'pointer', fontWeight: typography.fontWeight.bold, lineHeight: 1, padding: 2 }}>×</button>
           </div>
         ))}
         {selIds.length >= 2 && (
-          <button onClick={doCompare} disabled={busy} style={{
+          <button data-testid="compare-run" onClick={doCompare} disabled={busy} style={{
             padding: `${spacing.sm}px ${spacing.xl}px`, borderRadius: radius.lg, border: 'none',
             background: `linear-gradient(135deg, ${colors.primary500}, ${colors.primary600})`,
             color: colors.white, fontWeight: typography.fontWeight.semibold, fontSize: typography.fontSize.md,
@@ -122,10 +122,10 @@ const ComparePage: React.FC = () => {
 
       {result && (
         <>
-          <div style={card({ overflow: 'hidden', height: 340, marginBottom: spacing.xl })}>
+          <div data-testid="compare-grid" style={card({ overflow: 'hidden', height: 340, marginBottom: spacing.xl })}>
             <AgGridReact theme={gridTheme} rowData={rows()} columnDefs={gridCols} defaultColDef={{ resizable: true }} animateRows />
           </div>
-          <div style={card({ maxWidth: 640, margin: '0 auto', padding: spacing.xl })}>
+          <div data-testid="compare-radar" style={card({ maxWidth: 640, margin: '0 auto', padding: spacing.xl })}>
             <h3 style={{ textAlign: 'center', fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.gray900, marginBottom: spacing.base }}>Feature Profiles</h3>
             <ResponsiveContainer width="100%" height={380}>
               <RadarChart data={radar}>

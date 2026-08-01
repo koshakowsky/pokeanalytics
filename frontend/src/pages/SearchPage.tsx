@@ -117,12 +117,14 @@ const SearchPage: React.FC = () => {
         <div>
           <span style={label}>Name</span>
           <input type="text" placeholder="Pikachu..." value={filters.name || ''}
+            data-testid="filter-name"
             onChange={e => setFilters(f => ({ ...f, name: e.target.value || undefined }))}
             style={input} />
         </div>
         <div>
           <span style={label}>Type</span>
           <select multiple value={filters.types || []}
+            data-testid="filter-type"
             onChange={e => {
               const sel = Array.from(e.target.selectedOptions, o => o.value);
               setFilters(f => ({ ...f, types: sel.length ? sel : undefined }));
@@ -133,6 +135,7 @@ const SearchPage: React.FC = () => {
         <div>
           <span style={label}>Generation</span>
           <select value={filters.generation ?? ''}
+            data-testid="filter-generation"
             onChange={e => setFilters(f => ({ ...f, generation: e.target.value ? +e.target.value : undefined }))}
             style={{ ...input, cursor: 'pointer' }}>
             <option value="">All</option>
@@ -155,6 +158,7 @@ const SearchPage: React.FC = () => {
                 is_mythical: v === 'mythical' ? true : undefined,
               } as any));
             }}
+            data-testid="filter-group"
             style={{ ...input, cursor: 'pointer' }}
           >
             <option value="">All</option>
@@ -172,6 +176,7 @@ const SearchPage: React.FC = () => {
           <div key={s.key}>
             <span style={label}>min. {s.name}: <span style={{ color: colors.primary500 }}>{(filters as any)[s.key] ?? 0}</span></span>
             <input type="range" min={0} max={s.max}
+              data-testid={`filter-${s.key}`}
               value={(filters as any)[s.key] ?? 0}
               onChange={e => {
                 const v = +e.target.value;
@@ -190,13 +195,13 @@ const SearchPage: React.FC = () => {
         marginBottom: spacing.md,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
-          <span style={{
+          <span data-testid="results-total" style={{
             fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold,
             color: colors.gray900, fontVariantNumeric: 'tabular-nums',
           }}>{total}</span>
           <span style={{ fontSize: typography.fontSize.md, color: colors.gray500 }}>Pokemon found</span>
         </div>
-        <button onClick={() => setFilters({ sort_by: 'stat_total', sort_order: 'desc' })}
+        <button data-testid="reset-filters" onClick={() => setFilters({ sort_by: 'stat_total', sort_order: 'desc' })}
           style={{
             padding: `${spacing.sm}px ${spacing.base}px`, borderRadius: radius.md,
             border: `1px solid ${colors.gray200}`, background: colors.white,
@@ -209,7 +214,7 @@ const SearchPage: React.FC = () => {
       </div>
 
       {/* ── Grid ── */}
-      <div style={{ ...card({ overflow: 'hidden' }), height: 560 }}>
+      <div data-testid="results-grid" style={{ ...card({ overflow: 'hidden' }), height: 560 }}>
         <AgGridReact<PokemonListItem>
           theme={gridTheme}
           rowData={results} columnDefs={colDefs}
@@ -227,10 +232,10 @@ const SearchPage: React.FC = () => {
           display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
           gap: spacing.md, marginTop: spacing.md,
         }}>
-          <span style={{ fontSize: typography.fontSize.sm, color: colors.gray500, fontVariantNumeric: 'tabular-nums' }}>
+          <span data-testid="page-range" style={{ fontSize: typography.fontSize.sm, color: colors.gray500, fontVariantNumeric: 'tabular-nums' }}>
             {rangeFrom}–{rangeTo} of {total}
           </span>
-          <button disabled={offset === 0 || loading}
+          <button data-testid="page-prev" disabled={offset === 0 || loading}
             onClick={() => setOffset(o => Math.max(0, o - PAGE_SIZE))}
             style={{
               padding: `${spacing.xs}px ${spacing.md}px`, borderRadius: radius.md,
@@ -239,7 +244,7 @@ const SearchPage: React.FC = () => {
               cursor: offset === 0 ? 'default' : 'pointer',
               fontSize: typography.fontSize.sm, fontFamily: typography.fontFamily,
             }}>‹ Prev</button>
-          <button disabled={!hasMore || loading}
+          <button data-testid="page-next" disabled={!hasMore || loading}
             onClick={() => setOffset(o => o + PAGE_SIZE)}
             style={{
               padding: `${spacing.xs}px ${spacing.md}px`, borderRadius: radius.md,
@@ -253,7 +258,7 @@ const SearchPage: React.FC = () => {
 
       {/* ── Selected card ── */}
       {selected && (
-        <div style={{
+        <div data-testid="selected-card" style={{
           ...card({ padding: spacing.xl, marginTop: spacing.lg }),
           borderLeft: `4px solid ${colors.primary500}`,
         }}>
