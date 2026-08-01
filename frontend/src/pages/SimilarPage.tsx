@@ -78,11 +78,11 @@ const SimilarPage: React.FC = () => {
       {/* Search */}
       <div style={{ position: 'relative', maxWidth: 420, marginBottom: spacing.xl }}>
         <input type="text" placeholder="Start typing the Pokemon's name..." value={query} onChange={e => setQuery(e.target.value)}
-          style={searchInputStyle} />
+          data-testid="similar-search" style={searchInputStyle} />
         {hints.length > 0 && (
           <div style={dropdownPanel}>
             {hints.map(p => (
-              <div key={p.id} onClick={() => pick(p)}
+              <div key={p.id} data-testid="similar-suggestion" onClick={() => pick(p)}
                 style={dropdownRow}
                 onMouseEnter={e => (e.currentTarget.style.background = colors.gray50)} onMouseLeave={e => (e.currentTarget.style.background = colors.white)}>
                 {p.sprite_url && <img src={p.sprite_url} alt="" style={{ width: 32, height: 32, marginRight: spacing.sm, borderRadius: 4 }} />}
@@ -97,7 +97,7 @@ const SimilarPage: React.FC = () => {
 
       {/* Target card */}
       {target && (
-        <div style={card({
+        <div data-testid="target-card" style={card({
           display: 'flex', gap: spacing.xl, padding: spacing.xl,
           marginBottom: spacing.xl, borderLeft: `4px solid ${colors.primary500}`,
         })}>
@@ -134,12 +134,12 @@ const SimilarPage: React.FC = () => {
             <h2 style={{ fontSize: typography.fontSize['2xl'], fontWeight: typography.fontWeight.bold, color: colors.gray900 }}>Similar Pokemon</h2>
             <span style={{ fontSize: typography.fontSize.md, color: colors.gray400 }}>({similar.length})</span>
           </div>
-          <div style={card({ overflow: 'hidden', height: 480, marginBottom: spacing.xl })}>
+          <div data-testid="similar-grid" style={card({ overflow: 'hidden', height: 480, marginBottom: spacing.xl })}>
             <AgGridReact<SimilarPokemon> theme={gridTheme} rowData={similar} columnDefs={colDefs} defaultColDef={{ resizable: true }} rowHeight={44} animateRows />
           </div>
 
           {radar.length > 0 && target && (
-            <div style={card({ maxWidth: 640, margin: '0 auto', padding: spacing.xl })}>
+            <div data-testid="similar-radar" style={card({ maxWidth: 640, margin: '0 auto', padding: spacing.xl })}>
               <h3 style={{ textAlign: 'center', fontSize: typography.fontSize.lg, fontWeight: typography.fontWeight.bold, color: colors.gray900, marginBottom: spacing.base }}>
                 <span style={{ textTransform: 'capitalize' }}>{target.name}</span> vs Top-3 similar
               </h3>

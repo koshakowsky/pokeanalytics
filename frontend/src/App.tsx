@@ -51,9 +51,10 @@ const App: React.FC = () => (
         </div>
 
         {/* Nav */}
-        <nav style={{ display: 'flex', gap: 2 }}>
+        <nav data-testid="nav" style={{ display: 'flex', gap: 2 }}>
           {nav.map(n => (
             <NavLink key={n.path} to={n.path} end={n.path === '/'}
+              data-testid={`nav-link-${n.label.toLowerCase()}`}
               style={({ isActive }) => ({
                 padding: `${spacing.sm}px ${spacing.base}px`,
                 borderRadius: radius.md,
