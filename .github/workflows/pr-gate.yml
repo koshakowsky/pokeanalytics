@@ -40,11 +40,11 @@ jobs:
 
       - name: Install test dependencies
         working-directory: poketests
-        run: pip install -r requirements.txt
+        run: pip install -r api/requirements.txt
 
-      - name: Run suite (default config — seed disabled)
+      - name: Run API suite (default config — seed disabled)
         working-directory: poketests
-        run: pytest --alluredir=allure-results
+        run: pytest api --alluredir=allure-results
         env:
           POKETESTS_BASE_URL: http://localhost/api
 
