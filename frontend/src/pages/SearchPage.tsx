@@ -187,7 +187,7 @@ const SearchPage: React.FC = () => {
         ))}
       </div>
 
-      {error && <div style={errorBanner}>{error}</div>}
+      {error && <div data-testid="error-banner" style={errorBanner}>{error}</div>}
 
       {/* ── Results bar ── */}
       <div style={{
