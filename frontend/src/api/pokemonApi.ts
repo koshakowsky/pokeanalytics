@@ -1,14 +1,9 @@
-import axios from 'axios';
+import { api } from './client';
 import type {
   PaginatedResponse, PokemonDetail, CategoryStat,
   TypeDistribution, GenerationStats, SimilarPokemon,
   CompareResponse, PokemonType, SearchFilters,
 } from '../types/pokemon';
-
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
-  timeout: 30000,
-});
 
 export const fetchPokemonList = async (
   filters: SearchFilters & { limit?: number; offset?: number }

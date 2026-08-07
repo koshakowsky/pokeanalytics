@@ -1,10 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from auth import require_tier
 from database import get_db
 from schemas import CompareRequest, CompareResponse
 from services.compare_service import compare_pokemon
 
-router = APIRouter(prefix="/api/compare", tags=["Compare"])
+# Comparison is a premium feature.
+router = APIRouter(
+    prefix="/api/compare",
+    tags=["Compare"],
+    dependencies=[Depends(require_tier("premium"))],
+)
 
 
 @router.post("/", response_model=CompareResponse)

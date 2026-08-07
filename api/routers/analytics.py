@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from auth import require_tier
 from database import get_db
 from schemas import CategoryStat, TypeDistribution, GenerationStats
 from services.analytics_service import (
@@ -9,7 +10,12 @@ from services.analytics_service import (
     get_generation_stats,
 )
 
-router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
+# Analytics is a premium feature — every route here requires the premium tier.
+router = APIRouter(
+    prefix="/api/analytics",
+    tags=["Analytics"],
+    dependencies=[Depends(require_tier("premium"))],
+)
 
 
 @router.get("/categories", response_model=list[CategoryStat])

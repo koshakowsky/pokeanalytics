@@ -1,4 +1,5 @@
-from pydantic import BaseModel, ConfigDict, computed_field
+from datetime import datetime
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing import Optional
 
 
@@ -193,3 +194,65 @@ class TypeEffectivenessSchema(BaseModel):
     attacking_type: str
     defending_type: str
     multiplier: float
+
+
+# --- Auth & billing ---
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str = Field(min_length=8)
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+    tier: str
+
+
+# --- Checkout / subscriptions ---
+
+class PlanOut(BaseModel):
+    id: str
+    name: str
+    price_cents: int
+    currency: str
+    interval: str          # month | year
+
+
+class CardInput(BaseModel):
+    # Loose types on purpose: billing_cards does the semantic checks (Luhn,
+    # expiry, CVC length) so we return stable error_codes instead of a generic
+    # pydantic 422, and the validation core stays unit-testable.
+    number: str
+    exp_month: int
+    exp_year: int
+    cvc: str
+
+
+class CheckoutRequest(BaseModel):
+    plan_id: str
+    card: CardInput
+    idempotency_key: Optional[str] = None
+
+
+class SubscriptionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    # status = "none" when there is no subscription; other fields are null then.
+    status: str
+    plan: Optional[str] = None
+    card_brand: Optional[str] = None
+    card_last4: Optional[str] = None
+    current_period_end: Optional[datetime] = None

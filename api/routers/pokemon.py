@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
+from auth import require_tier
 from database import get_db
 from schemas import (
     PokemonSearchParams, PaginatedResponse, PokemonDetail, SimilarPokemon
@@ -86,7 +87,11 @@ def detail(pokemon_id: int, db: Session = Depends(get_db)):
     return PokemonDetail.model_validate(pokemon)
 
 
-@router.get("/{pokemon_id}/similar", response_model=list[SimilarPokemon])
+@router.get(
+    "/{pokemon_id}/similar",
+    response_model=list[SimilarPokemon],
+    dependencies=[Depends(require_tier("premium"))],  # premium-only feature
+)
 def similar(
     pokemon_id: int,
     limit: int = Query(10, ge=1, le=50),

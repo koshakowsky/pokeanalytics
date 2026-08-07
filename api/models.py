@@ -1,8 +1,54 @@
+from datetime import datetime, timezone
+
 from sqlalchemy import (
-    Column, Integer, String, Float, Boolean, ForeignKey, Table, Text
+    Column, Integer, String, Float, Boolean, ForeignKey, Table, Text, DateTime
 )
 from sqlalchemy.orm import relationship
 from database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    # Subscription tier: free | premium | admin (ranked in auth.TIER_ORDER).
+    tier = Column(String(20), nullable=False, default="free")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Subscription(Base):
+    # One row per user. User.tier is the fast flag for RBAC; this holds the
+    # billing details (plan, status, masked card, period end).
+    __tablename__ = "subscriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    plan = Column(String(20), nullable=False)
+    status = Column(String(20), nullable=False)            # active | canceled
+    card_brand = Column(String(20))
+    card_last4 = Column(String(4))
+    current_period_end = Column(DateTime)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class IdempotencyKey(Base):
+    # Cached checkout responses so a retry with the same key replays the
+    # original result instead of charging again.
+    __tablename__ = "idempotency_keys"
+
+    key = Column(String(255), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status_code = Column(Integer, nullable=False)
+    response_json = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
 pokemon_types = Table(
     "pokemon_types", Base.metadata,
