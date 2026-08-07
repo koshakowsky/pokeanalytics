@@ -5,7 +5,7 @@ import os
 from sqlalchemy import func
 
 from database import Base, SessionLocal, engine
-from models import Pokemon
+from models import Pokemon, User
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +14,36 @@ logger = logging.getLogger(__name__)
 INIT_DONE_ENV = "APP_INIT_DONE"
 
 
+def _ensure_admin() -> None:
+    """Create a deterministic admin user if absent.
+
+    Independent of pokemon seeding: RBAC needs an admin account to exist even
+    when AUTO_SEED is off. Credentials come from env with demo-friendly
+    defaults so local runs and CI get the same known admin.
+    """
+    email = os.getenv("ADMIN_EMAIL", "admin@example.com")
+    password = os.getenv("ADMIN_PASSWORD", "admin-password-123")
+
+    db = SessionLocal()
+    try:
+        if db.query(User).filter(User.email == email).first():
+            return
+        # Imported lazily so bootstrap doesn't pull bcrypt when only the schema
+        # is needed (e.g. Alembic-style tooling).
+        from auth import hash_password
+
+        db.add(User(email=email, hashed_password=hash_password(password), tier="admin"))
+        db.commit()
+        logger.info("Seeded admin user %s", email)
+    finally:
+        db.close()
+
+
 def initialize_database() -> None:
     Base.metadata.create_all(bind=engine)
     logger.info("Database schema ensured")
+
+    _ensure_admin()
 
     if os.getenv("AUTO_SEED", "0") != "1":
         return

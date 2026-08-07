@@ -4,7 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from routers import pokemon, analytics, compare, types
+from routers import pokemon, analytics, compare, types, auth, billing, admin
 from seed import seed_all
 from bootstrap import INIT_DONE_ENV, initialize_database
 
@@ -55,6 +55,9 @@ app.add_middleware(
 )
 
 # Routers
+app.include_router(auth.router)
+app.include_router(billing.router)
+app.include_router(admin.router)
 app.include_router(pokemon.router)
 app.include_router(analytics.router)
 app.include_router(compare.router)
