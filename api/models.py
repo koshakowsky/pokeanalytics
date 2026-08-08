@@ -40,11 +40,12 @@ class Subscription(Base):
 
 class IdempotencyKey(Base):
     # Cached checkout responses so a retry with the same key replays the
-    # original result instead of charging again.
+    # original result instead of charging again. Scoped per user via a
+    # composite PK so one user's key can't collide with another's.
     __tablename__ = "idempotency_keys"
 
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     key = Column(String(255), primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     status_code = Column(Integer, nullable=False)
     response_json = Column(Text, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

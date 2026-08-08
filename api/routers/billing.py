@@ -54,8 +54,8 @@ def checkout(
     db: Session = Depends(get_db),
 ):
     if body.idempotency_key:
-        cached = db.get(IdempotencyKey, body.idempotency_key)
-        if cached is not None and cached.user_id == user.id:
+        cached = db.get(IdempotencyKey, {"user_id": user.id, "key": body.idempotency_key})
+        if cached is not None:
             response.status_code = cached.status_code
             return json.loads(cached.response_json)
 
