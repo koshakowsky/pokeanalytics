@@ -25,9 +25,11 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (user) return <Navigate to="/" replace />;
-
   const from = (location.state as { from?: string } | null)?.from || '/';
+
+  // Already logged in (or just became so) — go to the intended destination,
+  // not always home, so a login triggered by a deep link returns there.
+  if (user) return <Navigate to={from} replace />;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
