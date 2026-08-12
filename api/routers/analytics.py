@@ -10,15 +10,14 @@ from services.analytics_service import (
     get_generation_stats,
 )
 
-# Analytics is a premium feature — every route here requires the premium tier.
-router = APIRouter(
-    prefix="/api/analytics",
-    tags=["Analytics"],
-    dependencies=[Depends(require_tier("premium"))],
-)
+router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
+
+# The analytical dashboards are premium; declared per-route so stat-ranges can
+# stay public (the search-filter sliders on the public page depend on it).
+premium = Depends(require_tier("premium"))
 
 
-@router.get("/categories", response_model=list[CategoryStat])
+@router.get("/categories", response_model=list[CategoryStat], dependencies=[premium])
 def categories(
     group_by: str = Query("type", enum=["type", "color", "generation", "habitat", "shape", "growth_rate"]),
     db: Session = Depends(get_db),
@@ -26,16 +25,17 @@ def categories(
     return get_category_analysis(db, group_by)
 
 
-@router.get("/type-distribution", response_model=list[TypeDistribution])
+@router.get("/type-distribution", response_model=list[TypeDistribution], dependencies=[premium])
 def type_distribution(db: Session = Depends(get_db)):
     return get_type_distribution(db)
 
 
 @router.get("/stat-ranges")
 def stat_ranges(db: Session = Depends(get_db)):
+    # Public: feeds the min/max slider bounds on the public search page.
     return get_stat_ranges(db)
 
 
-@router.get("/generation-stats", response_model=list[GenerationStats])
+@router.get("/generation-stats", response_model=list[GenerationStats], dependencies=[premium])
 def generation_stats(db: Session = Depends(get_db)):
     return get_generation_stats(db)
