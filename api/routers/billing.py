@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 import billing_cards
@@ -98,7 +99,14 @@ def checkout(
     sub.current_period_end = period_end
 
     user.tier = "premium"
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        winner = db.query(Subscription).filter(Subscription.user_id == user.id).first()
+        if winner is None:
+            raise
+        return _sub_out(winner)
     db.refresh(sub)
 
     out = _sub_out(sub)
@@ -110,7 +118,10 @@ def checkout(
             status_code=status.HTTP_200_OK,
             response_json=json.dumps(jsonable_encoder(out)),
         ))
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
 
     return out
 
