@@ -1,5 +1,5 @@
-from datetime import datetime
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from datetime import datetime, timezone
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_serializer
 from typing import Optional
 
 
@@ -256,3 +256,11 @@ class SubscriptionOut(BaseModel):
     card_brand: Optional[str] = None
     card_last4: Optional[str] = None
     current_period_end: Optional[datetime] = None
+
+    @field_serializer("current_period_end")
+    def _utc_datetime(self, value: Optional[datetime]) -> Optional[datetime]:
+        # SQLite stores naive datetimes; the value is UTC, so mark it as such to
+        # emit a valid RFC 3339 date-time (with offset) instead of a naive one.
+        if value is not None and value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
