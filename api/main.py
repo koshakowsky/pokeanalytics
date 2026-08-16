@@ -2,8 +2,9 @@ import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, Query
+from fastapi import FastAPI, BackgroundTasks, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from routers import pokemon, analytics, compare, types, auth, billing, admin
 from seed import seed_all
 from bootstrap import INIT_DONE_ENV, initialize_database
@@ -53,6 +54,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(OverflowError)
+async def integer_out_of_range(request: Request, exc: OverflowError):
+    # An int path/query param past SQLite's 64-bit range would otherwise bubble
+    # up as a 500 when bound to the query. Treat it as a bad request instead.
+    return JSONResponse(status_code=400, content={"detail": "Integer value out of range"})
 
 # Routers
 app.include_router(auth.router)

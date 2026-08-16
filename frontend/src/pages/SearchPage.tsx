@@ -115,15 +115,15 @@ const SearchPage: React.FC = () => {
         display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: spacing.base,
       }}>
         <div>
-          <span style={label}>Name</span>
-          <input type="text" placeholder="Pikachu..." value={filters.name || ''}
+          <label style={label} htmlFor="filter-name">Name</label>
+          <input type="text" id="filter-name" placeholder="Pikachu..." value={filters.name || ''}
             data-testid="filter-name"
             onChange={e => setFilters(f => ({ ...f, name: e.target.value || undefined }))}
             style={input} />
         </div>
         <div>
-          <span style={label}>Type</span>
-          <select multiple value={filters.types || []}
+          <label style={label} htmlFor="filter-type">Type</label>
+          <select multiple id="filter-type" value={filters.types || []}
             data-testid="filter-type"
             onChange={e => {
               const sel = Array.from(e.target.selectedOptions, o => o.value);
@@ -133,8 +133,8 @@ const SearchPage: React.FC = () => {
           </select>
         </div>
         <div>
-          <span style={label}>Generation</span>
-          <select value={filters.generation ?? ''}
+          <label style={label} htmlFor="filter-generation">Generation</label>
+          <select id="filter-generation" value={filters.generation ?? ''}
             data-testid="filter-generation"
             onChange={e => setFilters(f => ({ ...f, generation: e.target.value ? +e.target.value : undefined }))}
             style={{ ...input, cursor: 'pointer' }}>
@@ -143,8 +143,9 @@ const SearchPage: React.FC = () => {
           </select>
         </div>
         <div>
-          <span style={label}>Group</span>
+          <label style={label} htmlFor="filter-group">Group</label>
           <select
+            id="filter-group"
             value={
               filters.is_legendary === true ? 'legendary' :
               (filters as any).is_mythical === true ? 'mythical' :
@@ -174,8 +175,11 @@ const SearchPage: React.FC = () => {
           { key: 'min_speed', name: 'SPD', max: 200 },
         ].map(s => (
           <div key={s.key}>
-            <span style={label}>min. {s.name}: <span style={{ color: colors.primary500 }}>{(filters as any)[s.key] ?? 0}</span></span>
+            <label style={label} htmlFor={`filter-${s.key}`}>
+              min. {s.name}: <span style={{ color: colors.primary500 }}>{(filters as any)[s.key] ?? 0}</span>
+            </label>
             <input type="range" min={0} max={s.max}
+              id={`filter-${s.key}`}
               data-testid={`filter-${s.key}`}
               value={(filters as any)[s.key] ?? 0}
               onChange={e => {

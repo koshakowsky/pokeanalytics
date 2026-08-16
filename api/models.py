@@ -115,7 +115,14 @@ class Pokemon(Base):
     base_happiness = Column(Integer)
     gender_rate = Column(Integer)
     
-    types = relationship("Type", secondary=pokemon_types, back_populates="pokemon")
+    # order_by: the association table stores the Pokemon type slot (1 = primary,
+    # 2 = secondary); without it the ORM returned dual types reversed (BUG-006).
+    types = relationship(
+        "Type",
+        secondary=pokemon_types,
+        back_populates="pokemon",
+        order_by=pokemon_types.c.slot,
+    )
     abilities = relationship("Ability", secondary=pokemon_abilities, back_populates="pokemon")
     egg_groups = relationship("EggGroup", secondary=pokemon_egg_groups, back_populates="pokemon")
     
