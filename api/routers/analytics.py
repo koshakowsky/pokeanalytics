@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query
+from typing import Literal
+
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from auth import require_tier
 from database import get_db
@@ -17,9 +19,14 @@ router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 premium = Depends(require_tier("premium"))
 
 
+# Literal, not Query(enum=...): the latter only decorates the OpenAPI schema and
+# lets any string through, which silently grouped by color instead (BUG-005).
+GroupBy = Literal["type", "color", "generation", "habitat", "shape", "growth_rate"]
+
+
 @router.get("/categories", response_model=list[CategoryStat], dependencies=[premium])
 def categories(
-    group_by: str = Query("type", enum=["type", "color", "generation", "habitat", "shape", "growth_rate"]),
+    group_by: GroupBy = "type",
     db: Session = Depends(get_db),
 ):
     return get_category_analysis(db, group_by)
