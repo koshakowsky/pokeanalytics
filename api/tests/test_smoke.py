@@ -1,6 +1,6 @@
 """Smoke tests that hold regardless of whether the DB has been seeded.
 
-These cover wiring, validation and error handling — not data correctness —
+These cover wiring, validation and error handling - not data correctness -
 so they are safe to run in CI against an empty database.
 """
 

@@ -58,7 +58,7 @@ def initialize_database() -> None:
 
     max_pokemon = int(os.getenv("AUTO_SEED_MAX", "151"))
     if os.getenv("AUTO_SEED_SOURCE", "fixture") == "fixture":
-        # Hermetic: synchronous, no network — "healthy" implies "data ready".
+        # Hermetic: synchronous, no network - "healthy" implies "data ready".
         from seed_fixture import seed_from_fixture
 
         count = seed_from_fixture(max_pokemon=max_pokemon)

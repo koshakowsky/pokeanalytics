@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════
-//  Design Tokens — PokéAnalytics SaaS
+//  Design Tokens - PokéAnalytics SaaS
 // ═══════════════════════════════════════
 
 export const colors = {
