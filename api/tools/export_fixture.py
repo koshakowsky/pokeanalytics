@@ -96,7 +96,7 @@ def main() -> None:
         OUT_PATH.parent.mkdir(exist_ok=True)
         OUT_PATH.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8")
         print(
-            f"Wrote {OUT_PATH} — pokemon: {len(pokemon)}, types: {len(types)}, "
+            f"Wrote {OUT_PATH} - pokemon: {len(pokemon)}, types: {len(types)}, "
             f"effectiveness: {len(effectiveness)}, abilities: {len(abilities)}, "
             f"egg_groups: {len(egg_groups)}, size: {OUT_PATH.stat().st_size // 1024} KiB"
         )

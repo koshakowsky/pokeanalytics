@@ -14,7 +14,7 @@ JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-me")
 JWT_ALG = "HS256"
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
 
-# Tier ranking — a request satisfies a requirement when its rank is >= required.
+# Tier ranking - a request satisfies a requirement when its rank is >= required.
 TIER_ORDER = {"free": 0, "premium": 1, "admin": 2}
 
 # auto_error=False so a MISSING credential yields our 401, not HTTPBearer's 403.
