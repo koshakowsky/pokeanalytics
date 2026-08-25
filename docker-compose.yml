@@ -12,6 +12,9 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:3000}
       # Set this to enable the protected /api/admin/seed endpoint.
       SEED_TOKEN: ${SEED_TOKEN:-}
+      # Overridable so CI can hand the same per-run secret to the test suite,
+      # which needs it to forge signed-but-expired tokens (TC-SEC-03).
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
       # Auto-seed the DB on first boot when empty (keeps the demo self-contained).
       # Source "fixture" seeds synchronously from the bundled JSON (hermetic,
       # no network); "pokeapi" keeps the legacy live-API background seeding.
