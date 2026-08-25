@@ -1,11 +1,73 @@
-name: PR gate — API suite
+name: PR gate
+
 on:
   pull_request:
     branches: [main]
 
+# What this gate promises: a change to this repository cannot merge if it breaks
+# the contract the poketests catalog encodes. The API and contract suites are
+# cheap and hermetic, so they always run. The browser matrix is the expensive
+# one, and it is skipped only for changes that cannot affect runtime behaviour
+# (docs, CI config). Deliberately NOT a frontend/backend split: the SPA consumes
+# the API, so a backend change routinely breaks the UI - "touched api/, skip E2E"
+# would have let the analytics over-gating regression through.
+
 jobs:
+  changes:
+    name: Classify the change
+    runs-on: ubuntu-latest
+    outputs:
+      runtime: ${{ steps.filter.outputs.runtime }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: filter
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          changed=$(git diff --name-only "$base" "$head")
+          echo "Changed files:"; echo "$changed" | sed 's/^/  /'
+
+          # Anything that ships or serves code counts as runtime. Tested by
+          # listing the non-doc files rather than by grep's exit status: `grep
+          # -qv` disagrees with `grep -v` on BSD, and a gate must not depend on
+          # which grep the runner ships.
+          # An empty diff should never happen on a PR; if it does, run everything
+          # rather than wave it through.
+          if [ -z "$changed" ]; then
+            echo "Empty diff - running the full matrix defensively."
+            echo "runtime=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+
+          runtime_files=$(echo "$changed" | grep -vE '^(README|docs/|\.github/|LICENSE|\.gitignore)' | grep -vE '\.md$' || true)
+          if [ -n "$runtime_files" ]; then
+            echo "Runtime-affecting:"; echo "$runtime_files" | sed 's/^/  /'
+            echo "runtime=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Documentation/CI only - the browser matrix will be skipped."
+            echo "runtime=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  own-tests:
+    name: SUT unit + integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      # Units need nothing but pytest - that is the point of billing_cards being
+      # free of the app. Integration needs the app's own dependencies.
+      - name: Install
+        working-directory: api
+        run: pip install -r requirements.txt pytest
+      - name: Run
+        working-directory: api
+        run: pytest tests -q
+
   api-suite:
-    name: API suite (poketests@main)
+    name: API + contract suites (poketests@main)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout SUT (this PR, merged into main)
@@ -19,6 +81,11 @@ jobs:
           repository: koshakowsky/poketests
           ref: main
           path: poketests
+
+      # Same per-run-secret pattern the suite's own CI uses, so the stack and
+      # the tests share it and the expired-token case (TC-SEC-03) can run.
+      - name: Generate per-run JWT secret
+        run: echo "JWT_SECRET=$(uuidgen)" >> "$GITHUB_ENV"
 
       # Hermetic fixture seeding is synchronous at startup: --wait returning
       # healthy already implies "dataset ready".
@@ -40,11 +107,27 @@ jobs:
 
       - name: Install test dependencies
         working-directory: poketests
-        run: pip install -r api/requirements.txt
+        # Tolerates both layouts on purpose: this gate pins poketests@main while
+        # the suite migrates to PEP 735 dependency groups, and the two repos
+        # cannot merge in the same instant.
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f pyproject.toml ]; then
+            pip install --group api && pip install --group contract
+          else
+            pip install -r api/requirements.txt -r contract/requirements.txt
+          fi
 
-      - name: Run API suite (default config — seed disabled)
+      - name: Run API suite
         working-directory: poketests
-        run: pytest api --alluredir=allure-results
+        run: pytest api -n auto --alluredir=allure-results
+        env:
+          POKETESTS_BASE_URL: http://localhost/api
+          POKETESTS_JWT_SECRET: ${{ env.JWT_SECRET }}
+
+      - name: Run contract suite
+        working-directory: poketests
+        run: pytest contract --alluredir=allure-results
         env:
           POKETESTS_BASE_URL: http://localhost/api
 
@@ -52,10 +135,115 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: allure-results
+          name: allure-results-api
           path: poketests/allure-results
 
       - name: SUT logs on failure
         if: failure()
         working-directory: sut
         run: docker compose logs --tail=200
+
+  e2e-suite:
+    name: E2E (${{ matrix.browser }})
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            mark: ""          # full suite
+          - browser: firefox
+            mark: "-m p0"     # smoke only
+          - browser: webkit
+            mark: "-m p0"
+    steps:
+      - name: Checkout SUT (this PR, merged into main)
+        uses: actions/checkout@v7
+        with:
+          path: sut
+
+      - name: Checkout test suite (poketests@main)
+        uses: actions/checkout@v7
+        with:
+          repository: koshakowsky/poketests
+          ref: main
+          path: poketests
+
+      - name: Start SUT stack (hermetic fixture seed)
+        working-directory: sut
+        run: docker compose up -d --build --wait
+        env:
+          AUTO_SEED: "1"
+          AUTO_SEED_SOURCE: "fixture"
+
+      - name: Assert dataset is ready
+        run: |
+          total=$(curl -sf 'http://localhost/api/pokemon/?limit=1' | jq -r .total)
+          [ "$total" = "151" ] || { echo "expected 151 pokemon, got: $total"; exit 1; }
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install E2E dependencies
+        working-directory: poketests
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f pyproject.toml ]; then
+            pip install --group e2e
+          else
+            pip install -r e2e/requirements.txt
+          fi
+
+      - name: Install Playwright browser
+        working-directory: poketests
+        run: playwright install --with-deps ${{ matrix.browser }}
+
+      # -n 4 rather than -n auto: a browser worker costs far more than an httpx
+      # one, and the runner also hosts the SUT stack.
+      - name: Run E2E (${{ matrix.browser }})
+        working-directory: poketests
+        run: pytest e2e --browser ${{ matrix.browser }} ${{ matrix.mark }} -n 4 --alluredir=allure-results
+        env:
+          POKETESTS_WEB_URL: http://localhost
+          POKETESTS_BASE_URL: http://localhost/api
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: allure-results-e2e-${{ matrix.browser }}
+          path: poketests/allure-results
+
+      - name: SUT logs on failure
+        if: failure()
+        working-directory: sut
+        run: docker compose logs --tail=200
+
+  # The single required check. It passes when every suite either succeeded or
+  # was legitimately skipped, and fails when any of them failed. A top-level
+  # `on.paths` filter would instead leave a required check stuck pending on
+  # docs-only PRs; the aggregator avoids that.
+  gate:
+    name: Gate
+    if: always()
+    needs: [changes, own-tests, api-suite, e2e-suite]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify outcomes
+        run: |
+          echo "changes=${{ needs.changes.result }}"
+          echo "own-tests=${{ needs.own-tests.result }}"
+          echo "api-suite=${{ needs.api-suite.result }}"
+          echo "e2e-suite=${{ needs.e2e-suite.result }} (runtime=${{ needs.changes.outputs.runtime }})"
+          fail=0
+          for r in "${{ needs.changes.result }}" "${{ needs.own-tests.result }}" "${{ needs.api-suite.result }}"; do
+            [ "$r" = "success" ] || fail=1
+          done
+          case "${{ needs.e2e-suite.result }}" in
+            success|skipped) ;;
+            *) fail=1 ;;
+          esac
+          [ "$fail" = "0" ] && echo "Gate OK" || { echo "Gate failed"; exit 1; }
