@@ -40,9 +40,8 @@ def test_missing_pokemon_is_404(client):
     assert client.get("/api/pokemon/999999").status_code == 404
 
 
-def test_compare_requires_two_to_six(client):
-    assert client.post("/api/compare/", json={"pokemon_ids": [1]}).status_code == 400
-    assert client.post("/api/compare/", json={"pokemon_ids": list(range(1, 8))}).status_code == 400
+def test_compare_is_premium_gated(client):
+    assert client.post("/api/compare/", json={"pokemon_ids": [1]}).status_code == 401
 
 
 def test_seed_disabled_without_token(client):
