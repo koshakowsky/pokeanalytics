@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from models import (
     Pokemon, Type, Ability, EggGroup, Move,
     TypeEffectiveness, pokemon_types, pokemon_abilities,
-    pokemon_egg_groups, pokemon_moves_table
+    pokemon_egg_groups
 )
 from database import engine, Base, SessionLocal
 
